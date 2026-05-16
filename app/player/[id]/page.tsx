@@ -1,182 +1,164 @@
-
 "use client";
 
-import { useState } from "react";
-import ReactPlayer from "react-player";
-import {
-  Pause,
-  Play,
-  SkipForward,
-  SkipBack,
-} from "lucide-react";
-
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Cassette from "@/components/Cassette";
-import { useMixtapeStore } from "@/store/useMixtapeStore";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 export default function PlayerPage() {
-  const songs = useMixtapeStore(
-    (state) => state.songs
-  );
+  const { id } = useParams();
 
+  const [data, setData] = useState<any>(null);
   const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
 
-  const [playing, setPlaying] =
-    useState(false);
+  // ---------------- LOAD MIXTAPE ----------------
+  useEffect(() => {
+    async function loadMixtape() {
+      try {
+        const res = await fetch(`/api/mixtape/${id}`);
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error("Failed to load mixtape", err);
+      }
+    }
 
+    loadMixtape();
+  }, [id]);
+
+  if (!data) {
+    return (
+      <div style={loadingStyle}>
+        loading mixtape...
+      </div>
+    );
+  }
+
+  const songs = data.songs || [];
+
+  // ---------------- CONTROLS ----------------
   function nextSong() {
     setIndex((prev) =>
-      prev === songs.length - 1
-        ? 0
-        : prev + 1
+      prev === songs.length - 1 ? 0 : prev + 1
     );
   }
 
   function prevSong() {
     setIndex((prev) =>
-      prev === 0
-        ? songs.length - 1
-        : prev - 1
+      prev === 0 ? songs.length - 1 : prev - 1
     );
   }
 
+  function togglePlay() {
+    setPlaying((p) => !p);
+  }
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#f5f3ef",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily:
-          "Inter, Helvetica, Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "40px",
-        }}
-      >
-        {/* CASSETTE */}
+    <main style={page}>
+      {/* CASSETTE */}
+      <Cassette playing={playing} />
 
-        <Cassette playing={playing} />
-
-        {/* SONG TITLE */}
-
-        {songs[index] && (
-          <div
-            style={{
-              textAlign: "center",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "22px",
-                color: "#43362f",
-                fontWeight: 500,
-              }}
-            >
-              {songs[index].title}
-            </h2>
-
-            <p
-              style={{
-                marginTop: "8px",
-                color: "#857a72",
-                fontSize: "15px",
-              }}
-            >
-              {songs[index].artist}
-            </p>
-          </div>
-        )}
-
-        {/* PLAYER CONTROLS */}
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "26px",
-          }}
-        >
-          <button
-            onClick={prevSong}
-            style={controlButton}
-          >
-            <SkipBack size={22} />
-          </button>
-
-          <button
-            onClick={() =>
-              setPlaying(!playing)
-            }
-            style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "999px",
-              border: "none",
-              background: "#1f1f1f",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow:
-                "0 10px 30px rgba(0,0,0,0.15)",
-              transition: "0.2s",
-            }}
-          >
-            {playing ? (
-              <Pause size={28} fill="white" />
-            ) : (
-              <Play
-                size={28}
-                fill="white"
-                style={{ marginLeft: "3px" }}
-              />
-            )}
-          </button>
-
-          <button
-            onClick={nextSong}
-            style={controlButton}
-          >
-            <SkipForward size={22} />
-          </button>
+      {/* SONG INFO */}
+      {songs[index] && (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={title}>{songs[index].title}</h2>
+          <p style={artist}>{songs[index].artist}</p>
         </div>
+      )}
 
-        {/* AUDIO */}
+      {/* CONTROLS */}
+      <div style={controls}>
+        <button onClick={prevSong} style={btn}>
+          <SkipBack size={22} />
+        </button>
 
-        {songs[index] && (
-          <ReactPlayer
-            url={songs[index].audioUrl}
-            playing={playing}
-            width="0"
-            height="0"
-          />
-        )}
+        <button onClick={togglePlay} style={playBtn}>
+          {playing ? (
+            <Pause size={28} />
+          ) : (
+            <Play size={28} />
+          )}
+        </button>
+
+        <button onClick={nextSong} style={btn}>
+          <SkipForward size={22} />
+        </button>
       </div>
+
+      {/* AUDIO (FIXED — NO REACTPLAYER) */}
+      {songs[index] && (
+        <audio
+          src={songs[index].audioUrl}
+          autoPlay={playing}
+          onEnded={nextSong}
+        />
+      )}
     </main>
   );
 }
 
-const controlButton = {
+/* ---------------- STYLES ---------------- */
+
+const page: React.CSSProperties = {
+  minHeight: "100vh",
+  background: "#f5f3ef",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "30px",
+  fontFamily: "Inter, Helvetica, Arial, sans-serif",
+};
+
+const loadingStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#f5f3ef",
+};
+
+const title: React.CSSProperties = {
+  margin: 0,
+  fontSize: "22px",
+  color: "#43362f",
+  fontWeight: 500,
+};
+
+const artist: React.CSSProperties = {
+  marginTop: 8,
+  color: "#857a72",
+  fontSize: "15px",
+};
+
+const controls: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "26px",
+};
+
+const btn: React.CSSProperties = {
   width: "54px",
   height: "54px",
   borderRadius: "999px",
   border: "1px solid #d6d0c9",
   background: "rgba(255,255,255,0.6)",
-  color: "#43362f",
+  cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  cursor: "pointer",
-  backdropFilter: "blur(8px)",
-  transition: "0.2s",
 };
 
-
+const playBtn: React.CSSProperties = {
+  width: "72px",
+  height: "72px",
+  borderRadius: "999px",
+  border: "none",
+  background: "#1f1f1f",
+  color: "white",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};

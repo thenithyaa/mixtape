@@ -1,121 +1,162 @@
 "use client";
 
-import { useParams } from "next/navigation";
-
-import { useMixtapeStore } from "@/store/useMixtapeStore";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import ReactPlayer from "react-player";
+import Cassette from "@/components/Cassette";
 
 export default function SharePage() {
-  const params = useParams();
+  const { id } = useParams();
+  const router = useRouter();
 
-  const receiver =
-    useMixtapeStore(
-      (state) => state.receiver
+  const [data, setData] = useState<any>(null);
+  const [stage, setStage] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(`/api/mixtape/${id}`);
+      const json = await res.json();
+      setData(json);
+    }
+
+    load();
+  }, [id]);
+
+  function nextSong() {
+    setIndex((p) =>
+      p === data.songs.length - 1 ? 0 : p + 1
     );
-
-  const link = `${window.location.origin}/player/${params.id}`;
-
-  async function copyLink() {
-    await navigator.clipboard.writeText(
-      link
-    );
-
-    alert("link copied!");
   }
 
+  function prevSong() {
+    setIndex((p) =>
+      p === 0 ? data.songs.length - 1 : p - 1
+    );
+  }
+
+  if (!data) {
+    return <div style={center}>loading...</div>;
+  }
+
+  const song = data.songs[index];
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#f5f3ef",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily:
-          "Inter, Helvetica, Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          width: "520px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "24px",
-          textAlign: "center",
-        }}
-      >
-        {/* TITLE */}
-
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "42px",
-            fontWeight: 300,
-            color: "#43362f",
-          }}
-        >
-          mixtape ready!
-        </h1>
-
-        {/* RECEIVER TEXT */}
-
-        <p
-          style={{
-            color: "#7d736b",
-            lineHeight: 1.6,
-            fontSize: "16px",
-          }}
-        >
-          send this to{" "}
-          <span
-            style={{
-              color: "#43362f",
-              fontWeight: 500,
-            }}
-          >
-            {receiver}
-          </span>{" "}
-          ♡
-        </p>
-
-        {/* LINK BOX */}
-
-        <div
-          style={{
-            width: "100%",
-            padding: "18px",
-            borderRadius: "16px",
-            border:
-              "1px solid #d8d0c7",
-            background:
-              "rgba(255,255,255,0.6)",
-            wordBreak: "break-all",
-            color: "#43362f",
-            fontSize: "14px",
-          }}
-        >
-          {link}
+    <main style={center}>
+      {/* ✉️ ENVELOPE */}
+      {stage === 0 && (
+        <div style={envelope} onClick={() => setStage(1)}>
+          ✉️
+          <p style={{ fontSize: "16px" }}>tap to open</p>
         </div>
+      )}
 
-        {/* COPY BUTTON */}
+      {/* 📜 NOTE */}
+      {stage === 1 && (
+        <div style={note} onClick={() => setStage(2)}>
+          <h2>for {data.receiver} ♡</h2>
+          <p>{data.note || "a mixtape made with love..."}</p>
 
-        <button
-          onClick={copyLink}
-          style={{
-            border: "none",
-            borderRadius: "999px",
-            padding: "14px 28px",
-            background: "#1f1f1f",
-            color: "white",
-            fontSize: "15px",
-            cursor: "pointer",
-            boxShadow:
-              "0 10px 30px rgba(0,0,0,0.08)",
-          }}
-        >
-          copy link
-        </button>
-      </div>
+          <p style={{ marginTop: 20, opacity: 0.6 }}>
+            tap to open cassette
+          </p>
+        </div>
+      )}
+
+      {/* 📼 CASSETTE + PLAYER */}
+      {stage === 2 && (
+        <div style={playerBox}>
+          <Cassette playing={playing} />
+
+          <div style={{ marginTop: 20, textAlign: "center" }}>
+            <h3 style={{ margin: 0 }}>{song?.title}</h3>
+            <p style={{ margin: 0, opacity: 0.7 }}>
+              {song?.artist}
+            </p>
+          </div>
+
+          {/* CONTROLS */}
+          <div style={controls}>
+            <button onClick={prevSong}>⏮</button>
+
+            <button
+              onClick={() => setPlaying(!playing)}
+              style={playBtn}
+            >
+              {playing ? "pause" : "play"}
+            </button>
+
+            <button onClick={nextSong}>⏭</button>
+          </div>
+
+          {/* AUDIO */}
+          {song && (
+            <ReactPlayer
+              url={song.audioUrl}
+              playing={playing}
+              width="0"
+              height="0"
+            />
+          )}
+
+          <p
+            style={{ marginTop: 20, opacity: 0.5, fontSize: 12 }}
+          >
+            tap play to start mixtape
+          </p>
+        </div>
+      )}
     </main>
   );
 }
+
+/* ---------------- STYLES ---------------- */
+
+const center: React.CSSProperties = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#f5f3ef",
+  fontFamily: "Inter",
+};
+
+const envelope: React.CSSProperties = {
+  fontSize: "60px",
+  textAlign: "center",
+  cursor: "pointer",
+  animation: "float 2s ease-in-out infinite",
+};
+
+const note: React.CSSProperties = {
+  width: "360px",
+  padding: "24px",
+  background: "#fffdf7",
+  borderRadius: "14px",
+  textAlign: "center",
+  cursor: "pointer",
+  boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+};
+
+const playerBox: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+};
+
+const controls: React.CSSProperties = {
+  marginTop: "20px",
+  display: "flex",
+  gap: "20px",
+  alignItems: "center",
+};
+
+const playBtn: React.CSSProperties = {
+  padding: "12px 20px",
+  borderRadius: "999px",
+  border: "none",
+  background: "#1f1f1f",
+  color: "white",
+  cursor: "pointer",
+};

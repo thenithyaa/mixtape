@@ -112,7 +112,7 @@ export default function Cassette({
           animate={playing ? { rotate: 360 } : {}}
           transition={{
             repeat: Infinity,
-            duration: 3.5,
+            duration: playing ? 2.5 : 6,
             ease: "linear",
           }}
           style={{
@@ -160,7 +160,7 @@ export default function Cassette({
           animate={playing ? { rotate: -360 } : {}}
           transition={{
             repeat: Infinity,
-            duration: 3.5,
+            duration: playing ? 2 : 6,
             ease: "linear",
           }}
           style={{
