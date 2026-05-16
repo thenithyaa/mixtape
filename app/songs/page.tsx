@@ -1,46 +1,44 @@
 "use client";
 
 import { useState } from "react";
-
-import {
-  Search,
-  ArrowRight,
-  Heart,
-} from "lucide-react";
-
+import { Search, ArrowRight, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
-
 import { useMixtapeStore } from "@/store/useMixtapeStore";
 
 export default function SongsPage() {
   const [query, setQuery] = useState("");
-
-  const [results, setResults] =
-    useState<any[]>([]);
-
-  const [addedSong, setAddedSong] =
-    useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [addedSong, setAddedSong] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
-  const addSong = useMixtapeStore(
-    (state) => state.addSong
-  );
-
-  const songs = useMixtapeStore(
-    (state) => state.songs
-  );
+  const addSong = useMixtapeStore((state) => state.addSong);
+  const songs = useMixtapeStore((state) => state.songs);
 
   async function searchSongs() {
     if (!query.trim()) return;
 
-    const res = await fetch(
-      `/api/search?q=${query}`
-    );
+    try {
+      setLoading(true);
 
-    const data = await res.json();
+      const res = await fetch(`/api/search?q=${query}`);
+      const data = await res.json();
 
-    setResults(data);
+      // ✅ IMPORTANT SAFETY CHECK
+      if (!res.ok || !Array.isArray(data)) {
+        setResults([]);
+        setLoading(false);
+        return;
+      }
+
+      setResults(data);
+    } catch (err) {
+      console.error("Search failed:", err);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -51,8 +49,7 @@ export default function SongsPage() {
         display: "flex",
         justifyContent: "center",
         paddingTop: "100px",
-        fontFamily:
-          "Inter, Helvetica, Arial, sans-serif",
+        fontFamily: "Inter, Helvetica, Arial, sans-serif",
       }}
     >
       <div
@@ -65,7 +62,6 @@ export default function SongsPage() {
         }}
       >
         {/* TITLE */}
-
         <h1
           style={{
             fontSize: "48px",
@@ -80,7 +76,6 @@ export default function SongsPage() {
         </h1>
 
         {/* HEART BAR */}
-
         <div
           style={{
             display: "flex",
@@ -93,26 +88,15 @@ export default function SongsPage() {
             <Heart
               key={index}
               size={18}
-              fill={
-                index < songs.length
-                  ? "#c08497"
-                  : "transparent"
-              }
-              color={
-                index < songs.length
-                  ? "#c08497"
-                  : "#cfc7be"
-              }
+              fill={index < songs.length ? "#c08497" : "transparent"}
+              color={index < songs.length ? "#c08497" : "#cfc7be"}
               strokeWidth={1.8}
-              style={{
-                transition: "0.3s",
-              }}
+              style={{ transition: "0.3s" }}
             />
           ))}
         </div>
 
         {/* SEARCH BAR */}
-
         <div
           style={{
             width: "100%",
@@ -129,9 +113,7 @@ export default function SongsPage() {
             type="text"
             placeholder="search songs..."
             value={query}
-            onChange={(e) =>
-              setQuery(e.target.value)
-            }
+            onChange={(e) => setQuery(e.target.value)}
             style={{
               flex: 1,
               border: "none",
@@ -139,68 +121,46 @@ export default function SongsPage() {
               background: "transparent",
               fontSize: "18px",
               color: "#7a6d63",
-              fontFamily:
-                "Inter, Helvetica, Arial, sans-serif",
+              fontFamily: "Inter, Helvetica, Arial, sans-serif",
             }}
           />
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "14px",
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
             {/* SEARCH BUTTON */}
-
             <button
               onClick={searchSongs}
               style={{
                 border: "none",
-                background:
-                  "transparent",
+                background: "transparent",
                 cursor: "pointer",
                 color: "#7a6d63",
                 display: "flex",
                 alignItems: "center",
-                justifyContent:
-                  "center",
+                justifyContent: "center",
               }}
             >
-              <Search
-                size={18}
-                strokeWidth={1.8}
-              />
+              <Search size={18} strokeWidth={1.8} />
             </button>
 
             {/* NEXT PAGE BUTTON */}
-
             <button
-              onClick={() =>
-                router.push("/design")
-              }
+              onClick={() => router.push("/design")}
               style={{
                 border: "none",
-                background:
-                  "transparent",
+                background: "transparent",
                 cursor: "pointer",
                 color: "#7a6d63",
                 display: "flex",
                 alignItems: "center",
-                justifyContent:
-                  "center",
+                justifyContent: "center",
               }}
             >
-              <ArrowRight
-                size={20}
-                strokeWidth={1.8}
-              />
+              <ArrowRight size={20} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
         {/* RESULTS */}
-
         <div
           style={{
             width: "100%",
@@ -209,113 +169,93 @@ export default function SongsPage() {
             gap: "14px",
           }}
         >
-          {results.map((song: any) => (
-            <div
-              key={song.url}
-              style={{
-                width: "100%",
-                border:
-                  "1px solid #d7d0c8",
-                borderRadius: "14px",
-                padding: "16px 18px",
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                alignItems: "center",
-                background:
-                  "rgba(255,255,255,0.45)",
-                backdropFilter:
-                  "blur(4px)",
-                transition: "0.2s",
-              }}
-            >
+          {/* LOADING */}
+          {loading && (
+            <p style={{ color: "#8a8178" }}>Searching...</p>
+          )}
+
+          {/* SAFE MAP */}
+          {Array.isArray(results) &&
+            results.map((song: any) => (
               <div
+                key={song.url}
                 style={{
-                  maxWidth: "360px",
+                  width: "100%",
+                  border: "1px solid #d7d0c8",
+                  borderRadius: "14px",
+                  padding: "16px 18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  background: "rgba(255,255,255,0.45)",
+                  backdropFilter: "blur(4px)",
+                  transition: "0.2s",
                 }}
               >
-                <p
-                  style={{
-                    margin: 0,
-                    color: "#43362f",
-                    fontSize: "16px",
-                    fontWeight: 500,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {song.title}
-                </p>
+                <div style={{ maxWidth: "360px" }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#43362f",
+                      fontSize: "16px",
+                      fontWeight: 500,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {song.title}
+                  </p>
 
-                <p
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: "5px",
+                      color: "#8a8178",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {song.artist}
+                  </p>
+                </div>
+
+                {/* ADD BUTTON */}
+                <button
+                  onClick={() => {
+                    addSong({
+                      title: song.title,
+                      artist: song.artist,
+                      audioUrl: song.url,
+                    });
+
+                    setAddedSong(song.url);
+
+                    setTimeout(() => {
+                      setAddedSong("");
+                    }, 500);
+                  }}
+                  disabled={songs.length >= 10}
                   style={{
-                    margin: 0,
-                    marginTop: "5px",
-                    color: "#8a8178",
+                    border: "1px solid #9b9188",
+                    borderRadius: "999px",
+                    padding: "8px 16px",
+                    background:
+                      songs.length >= 10
+                        ? "#d8d3cd"
+                        : addedSong === song.url
+                        ? "#43362f"
+                        : "transparent",
+                    cursor: "pointer",
+                    color:
+                      addedSong === song.url ? "white" : "#6f645c",
                     fontSize: "14px",
+                    transform:
+                      addedSong === song.url ? "scale(1.08)" : "scale(1)",
+                    transition: "0.25s ease",
                   }}
                 >
-                  {song.artist}
-                </p>
+                  {addedSong === song.url ? "added!" : "add"}
+                </button>
               </div>
-
-              {/* ADD BUTTON */}
-
-              <button
-                onClick={() => {
-                  addSong({
-                    title: song.title,
-                    artist: song.artist,
-                    audioUrl:
-                      song.url,
-                  });
-
-                  setAddedSong(
-                    song.url
-                  );
-
-                  setTimeout(() => {
-                    setAddedSong("");
-                  }, 500);
-                }}
-                disabled={
-                  songs.length >= 10
-                }
-                style={{
-                  border:
-                    "1px solid #9b9188",
-                  borderRadius: "999px",
-                  padding:
-                    "8px 16px",
-                  background:
-                    songs.length >= 10
-                      ? "#d8d3cd"
-                      : addedSong ===
-                        song.url
-                      ? "#43362f"
-                      : "transparent",
-                  cursor: "pointer",
-                  color:
-                    addedSong ===
-                    song.url
-                      ? "white"
-                      : "#6f645c",
-                  fontSize: "14px",
-                  transform:
-                    addedSong ===
-                    song.url
-                      ? "scale(1.08)"
-                      : "scale(1)",
-                  transition:
-                    "0.25s ease",
-                }}
-              >
-                {addedSong ===
-                song.url
-                  ? "added!"
-                  : "add"}
-              </button>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </main>
